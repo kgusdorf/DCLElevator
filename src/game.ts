@@ -20,7 +20,7 @@ export class DoorData {
 }
 
 let floorArray = [0, 10, 20, 30, 40] // Floor heights [Ground, 1st Floor, 2nd, 3rd, ...]
-const doorSlideOrigins = [[new Vector3(-1, 1.5, 2), new Vector3(-3, 1.5, 2)], [new Vector3(1, 1.5, 2), new Vector3(3, 1.5, 2)]]
+const doorSlideOrigins = [[new Vector3(-1, 1.5, 1.95), new Vector3(-3, 1.5, 1.95)], [new Vector3(1, 1.5, 1.95), new Vector3(3, 1.5, 1.95)]]
 const doors = []
 
 export class ElevatorMove {
@@ -86,27 +86,13 @@ function closeDoors(){
   }
 }
 
-function goUp(){
+function sendToFloor(x: number){
   let data = elevatorContainer.getComponent(ElevatorData)
-  if (data.fraction == 1 && data.currFloor < floorArray.length-1 && !data.inMovement){
-    log("ACTIVATED!")
+  if (data.fraction == 1 && (x >= 0 && x < floorArray.length) && !data.inMovement && x != data.currFloor){
     data.inMovement = true
     closeDoors()
     let pos = elevatorContainer.getComponent(ElevatorData).target
-    data.currFloor++
-    data.fraction = 0
-    data.origin = data.target
-    data.target = new Vector3(pos.x, floorArray[data.currFloor], pos.z)
-  }
-}
-
-function goDown(){
-  let data = elevatorContainer.getComponent(ElevatorData)
-  if (data.fraction == 1 && data.currFloor > 0 && !data.inMovement){
-    data.inMovement = true
-    closeDoors()
-    let pos = data.target
-    data.currFloor--
+    data.currFloor = x
     data.fraction = 0
     data.origin = data.target
     data.target = new Vector3(pos.x, floorArray[data.currFloor], pos.z)
@@ -132,18 +118,19 @@ elevatorRoom.addComponent(new Transform({
 }))
 engine.addEntity(elevatorRoom)
 
+
 // Button inside elevator that controls upward movement
 const upButton = new Entity()
 upButton.setParent(elevatorContainer)
 upButton.addComponent(new BoxShape())
 upButton.addComponent(new Transform({
-  position: new Vector3(1, 0, 0),
-  scale: new Vector3(0.5, 0.5, 0.5)
+  position: new Vector3(1, 1.5, -2),
+  scale: new Vector3(0.5, 0.5, 0.1)
 }))
 upButton.addComponent(new Material())
 upButton.getComponent(Material).albedoColor = Color3.Green()
 upButton.addComponent(new OnClick( e => {
-  goUp()
+  sendToFloor(elevatorContainer.getComponent(ElevatorData).currFloor+1)
 }))
 engine.addEntity(upButton)
 
@@ -152,15 +139,39 @@ const downButton = new Entity()
 downButton.setParent(elevatorContainer)
 downButton.addComponent(new BoxShape())
 downButton.addComponent(new Transform({
-  position: new Vector3(0, 0, 1),
-  scale: new Vector3(0.5, 0.5, 0.5)
+  position: new Vector3(-1, 1.5, -2),
+  scale: new Vector3(0.5, 0.5, 0.1)
 }))
 downButton.addComponent(new Material())
 downButton.getComponent(Material).albedoColor = Color3.Red()
 downButton.addComponent(new OnClick( e => {
-  goDown()
+  sendToFloor(elevatorContainer.getComponent(ElevatorData).currFloor-1)
 }))
 engine.addEntity(downButton)
+
+const upText = new Entity()
+upText.setParent(elevatorContainer)
+upText.addComponent(new Transform({
+  position: new Vector3(1, 1.5, -1.9),
+  rotation: Quaternion.Euler(0, 180, 0)
+}))
+const text1 = new TextShape("Up")
+text1.color = Color3.Black()
+text1.fontSize = 1.5
+upText.addComponent(text1)
+engine.addEntity(upText)
+
+const downText = new Entity()
+downText.setParent(elevatorContainer)
+downText.addComponent(new Transform({
+  position: new Vector3(-1, 1.5, -1.9),
+  rotation: Quaternion.Euler(0, 180, 0)
+}))
+const text2 = new TextShape("Down")
+text2.color = Color3.Black()
+text2.fontSize = 1.5
+downText.addComponent(text2)
+engine.addEntity(downText)
 
 // Sliding doors
 doors[0] = new Entity()
@@ -168,7 +179,7 @@ doors[0].setParent(elevatorContainer)
 doors[0].addComponent(new BoxShape())
 doors[0].addComponent(new DoorData())
 doors[0].addComponent(new Transform({
-  position: new Vector3(-1, 1.5, 2),
+  position: doorSlideOrigins[0][0],
   scale: new Vector3(2, 3, 0.05)
 }))
 doors[0].addComponent(new Material())
@@ -180,7 +191,7 @@ doors[1].setParent(elevatorContainer)
 doors[1].addComponent(new BoxShape())
 doors[1].addComponent(new DoorData())
 doors[1].addComponent(new Transform({
-  position: new Vector3(1, 1.5, 2),
+  position: doorSlideOrigins[1][0],
   scale: new Vector3(2, 3, 0.05)
 }))
 doors[1].addComponent(new Material())
@@ -198,4 +209,89 @@ for (let i = 0; i < floorArray.length; i++){
   floor.addComponent(new Material())
   floor.getComponent(Material).albedoColor = Color3.Gray()
   engine.addEntity(floor)
+
+  let material = new Material()
+  material.albedoColor = Color3.Gray()
+
+  let wall1 = new Entity()
+  wall1.addComponent(new BoxShape())
+  wall1.getComponent(BoxShape).withCollisions = false
+  wall1.addComponent(new Transform({
+    position: new Vector3(3, floorArray[i]+5, 0),
+    scale: new Vector3(6, 10, 0.05)
+  }))
+  wall1.addComponent(material)
+  engine.addEntity(wall1)
+
+  let wall2 = new Entity()
+  wall2.addComponent(new BoxShape())
+  wall2.getComponent(BoxShape).withCollisions = false
+  wall2.addComponent(new Transform({
+    position: new Vector3(13, floorArray[i]+5, 0),
+    scale: new Vector3(6, 10, 0.05)
+  }))
+  wall2.addComponent(material)
+  engine.addEntity(wall2)
+
+  let wall3 = new Entity()
+  wall3.addComponent(new BoxShape())
+  wall3.getComponent(BoxShape).withCollisions = false
+  wall3.addComponent(new Transform({
+    position: new Vector3(8, floorArray[i]+6.5, 0),
+    scale: new Vector3(4, 7, 0.05)
+  }))
+  wall3.addComponent(material)
+  engine.addEntity(wall3)
 }
+
+for (let i = 0; i < floorArray.length; i++){
+  let button = new Entity()
+  button.addComponent(new BoxShape())
+  button.addComponent(new Transform({
+    position: new Vector3(12, floorArray[i]+2, 0),
+    scale: new Vector3(0.3, 0.3, 0.3)
+  }))
+  button.addComponent(new Material())
+  button.getComponent(Material).albedoColor = Color3.Blue()
+  button.addComponent(new OnClick( e => {
+    sendToFloor(i)
+  }))
+  engine.addEntity(button)
+}
+
+const elevatorWall1 = new Entity()
+elevatorWall1.setParent(elevatorContainer)
+elevatorWall1.addComponent(new BoxShape())
+elevatorWall1.addComponent(new Transform({
+  position: new Vector3(0, 1.5, -2),
+  scale: new Vector3(4, 3, 0.05)
+}))
+engine.addEntity(elevatorWall1)
+
+const elevatorWall2 = new Entity()
+elevatorWall2.setParent(elevatorContainer)
+elevatorWall2.addComponent(new BoxShape())
+elevatorWall2.addComponent(new Transform({
+  position: new Vector3(-2, 1.5, 0),
+  scale: new Vector3(0.05, 3, 4)
+}))
+engine.addEntity(elevatorWall2)
+
+const elevatorWall3 = new Entity()
+elevatorWall3.setParent(elevatorContainer)
+elevatorWall3.addComponent(new BoxShape())
+elevatorWall3.addComponent(new Transform({
+  position: new Vector3(2, 1.5, 0),
+  scale: new Vector3(0.05, 3, 4)
+}))
+engine.addEntity(elevatorWall3)
+
+const elevatorRoof1 = new Entity()
+elevatorRoof1.setParent(elevatorContainer)
+elevatorRoof1.addComponent(new BoxShape())
+elevatorRoof1.addComponent(new Transform({
+  position: new Vector3(0, 3, 0),
+  scale: new Vector3(4, 0.05, 4)
+}))
+engine.addEntity(elevatorRoof1)
+openDoors()
