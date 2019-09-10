@@ -19,7 +19,7 @@ export class DoorData {
 }
 
 const elevatorSpeed = 2 // Lower is faster; adjust this depending on distance between floors; if you go too fast the player will clip through the room and fall out
-const doorSlideOrigins = [[new Vector3(-1, 1.5, 1.95), new Vector3(-3, 1.5, 1.95)], [new Vector3(1, 1.5, 1.95), new Vector3(3, 1.5, 1.95)]] // Slide points for doors
+const doorSlideOrigins = [[new Vector3(-1, 2, 1.95), new Vector3(-3, 2, 1.95)], [new Vector3(1, 2, 1.95), new Vector3(3, 2, 1.95)]] // Slide points for doors
 const doors = [] // Holds door entities
 const elevatorContainer: Entity = new Entity()
 const ding: Entity = new Entity()
@@ -124,6 +124,7 @@ export class Elevator {
     elevatorRoom.addComponent(new GLTFShape("models/elevator.glb"))
     elevatorRoom.setParent(elevatorContainer)
     elevatorRoom.addComponent(new Transform({
+      position: new Vector3(0, -0.1, 0.47),
       scale: new Vector3(0.5, 0.5, 0.5)
     }))
     engine.addEntity(elevatorRoom)
@@ -134,8 +135,8 @@ export class Elevator {
       floorButton.setParent(elevatorContainer)
       floorButton.addComponent(new BoxShape())
       floorButton.addComponent(new Transform({
-        position: new Vector3(0, 0.3+0.3*i, -2),
-        scale: new Vector3(0.2, 0.2, 0.1)
+        position: new Vector3(1.9, 1.28+0.3*i, 1.3),
+        scale: new Vector3(0.05, 0.2, 0.2)
       }))
       floorButton.addComponent(new Material())
       floorButton.getComponent(Material).albedoColor = Color3.Red()
@@ -147,11 +148,10 @@ export class Elevator {
       const text = new Entity()
       text.setParent(elevatorContainer)
       text.addComponent(new Transform({
-        position: new Vector3(0.5, 0.3+0.3*i, -1.9),
-        rotation: Quaternion.Euler(0, 180, 0)
+        position: new Vector3(1.87, 1.28+0.3*i, 1.3),
+        rotation: Quaternion.Euler(0, 90, 0)
       }))
       const text1 = i > 0 ? new TextShape(String(i)) : new TextShape("G")
-      text1.color = Color3.Black()
       text1.fontSize = 1.5
       text.addComponent(text1)
       engine.addEntity(text)
@@ -165,7 +165,7 @@ export class Elevator {
       doors[i].addComponent(new DoorData())
       doors[i].addComponent(new Transform({
         position: doorSlideOrigins[i][0],
-        scale: new Vector3(2, 3, 0.05)
+        scale: new Vector3(2, 4, 0.05)
       }))
       doors[i].addComponent(new Material())
       doors[i].getComponent(Material).albedoColor = Color3.Black()
