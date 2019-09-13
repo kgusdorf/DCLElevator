@@ -124,7 +124,7 @@ export class Elevator {
     elevatorRoom.addComponent(new GLTFShape("models/elevator.glb"))
     elevatorRoom.setParent(elevatorContainer)
     elevatorRoom.addComponent(new Transform({
-      position: new Vector3(0, -0.1, 0.47),
+      position: new Vector3(0, 0, 0.47),
       scale: new Vector3(0.5, 0.5, 0.5)
     }))
     engine.addEntity(elevatorRoom)
@@ -135,7 +135,7 @@ export class Elevator {
       floorButton.setParent(elevatorContainer)
       floorButton.addComponent(new BoxShape())
       floorButton.addComponent(new Transform({
-        position: new Vector3(1.9, 1.28+0.3*i, 1.3),
+        position: new Vector3(1.9, 1.38+0.3*i, 1.35),
         scale: new Vector3(0.05, 0.2, 0.2)
       }))
       floorButton.addComponent(new Material())
@@ -148,7 +148,7 @@ export class Elevator {
       const text = new Entity()
       text.setParent(elevatorContainer)
       text.addComponent(new Transform({
-        position: new Vector3(1.87, 1.28+0.3*i, 1.3),
+        position: new Vector3(1.87, 1.38+0.3*i, 1.35),
         rotation: Quaternion.Euler(0, 90, 0)
       }))
       const text1 = i > 0 ? new TextShape(String(i)) : new TextShape("G")
