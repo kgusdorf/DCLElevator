@@ -112,6 +112,8 @@ export class Elevator {
       position: this.pos
     }))
     elevatorContainer.addComponent(new ElevatorData())
+    elevatorContainer.getComponent(ElevatorData).origin = this.pos
+    elevatorContainer.getComponent(ElevatorData).target = this.pos
     engine.addEntity(elevatorContainer)
 
     // Ding sound effect
