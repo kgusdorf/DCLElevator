@@ -22,6 +22,10 @@ export class DoorData {
 @Component("ElevatorButton")
 export class ElevatorButton {}
 
+// Flag for buttons outside elevator
+@Component("OutsideButton")
+export class OutsideButton {}
+
 const elevatorSpeed = 2 // Lower is faster; adjust this depending on distance between floors; if you go too fast the player will clip through the room and fall out
 const doorSlideOrigins = [[new Vector3(-1, 2, 1.95), new Vector3(-3, 2, 1.95)], [new Vector3(1, 2, 1.95), new Vector3(3, 2, 1.95)]] // Slide points for doors
 const doors = [] // Holds door entities
@@ -30,6 +34,7 @@ const ding: Entity = new Entity()
 let floorArray: number[]
 const floorScreenContainerArray = []
 const floorScreenTextArray = []
+let outsideButtonPressed = false
 
 // Toggles sliding doors; Passing 0 will close; Passing 1 will open
 function toggleDoors(x: number){
@@ -41,6 +46,14 @@ function toggleDoors(x: number){
       doors[i].getComponent(DoorData).target = doorSlideOrigins[i][x]
     }
   }
+}
+
+// Helper function to match position with floorArray value
+function precision(a) {
+  if (!isFinite(a)) return 0;
+  var e = 1, p = 0;
+  while (Math.round(a * e) / e !== a) { e *= 10; p++; }
+  return p;
 }
 
 // System used to slide elevator
@@ -57,6 +70,10 @@ export class ElevatorMove {
         for (let entity of engine.getComponentGroup(ElevatorButton).entities){
           entity.getComponent(Material).albedoColor = Color3.Gray()
         }
+        for (let entity of engine.getComponentGroup(OutsideButton).entities){
+          entity.getComponent(Material).albedoColor = Color3.Gray()
+        }
+        outsideButtonPressed = false
         for (let i = 0; i < floorScreenContainerArray.length; i++){
           if (i % 3 == 0) {
             floorScreenContainerArray[i].getComponent(GLTFShape).visible = 1
@@ -69,7 +86,8 @@ export class ElevatorMove {
         lerp.fraction += dt / (elevatorSpeed * lerp.floorDistance)
       }
     }
-    let yPos = Math.floor(transform.position.y)
+    let yPos = +transform.position.y.toFixed(precision(floorArray[1]))
+    log(yPos)
     if (floorArray.includes(yPos)){
       for (let screenText of floorScreenTextArray){
         screenText.getComponent(TextShape).value = yPos != 0 ? floorArray.indexOf(yPos) : "G"
@@ -107,7 +125,7 @@ export class Elevator {
   constructor(pos: Vector3, fArray: number[], rot?: Quaternion){
     this.pos = pos
     this.rot = rot
-    floorArray = fArray // Floor heights [Ground, 1st Floor, 2nd, 3rd, ...]
+    floorArray = fArray // Floor heights [Ground, 1st Floor, 2nd, 3rd, ...]; Make sure values are all using same precision or screen won't update correctly
 
     engine.addSystem(new ElevatorMove(), 1)
     engine.addSystem(new DoorSystem(), 2)
@@ -130,6 +148,9 @@ export class Elevator {
       }
       data.inMovement = true
       engine.getComponentGroup(ElevatorButton).entities[x].getComponent(Material).albedoColor = Color3.Green()
+      if (outsideButtonPressed){
+        engine.getComponentGroup(OutsideButton).entities[x].getComponent(Material).albedoColor = Color3.Green()
+      }
       toggleDoors(0)
       let pos = elevatorContainer.getComponent(ElevatorData).target
       data.floorDistance = Math.abs(x - data.currFloor)
@@ -227,18 +248,31 @@ export class Elevator {
 
     for (let i = 0; i < floorArray.length; i++){
       let button = new Entity()
-      button.addComponent(new BoxShape())
+      button.addComponent(new OutsideButton())
+      button.addComponent(new CylinderShape())
       button.addComponent(new Transform({
-        position: new Vector3(12, floorArray[i]+2, 0),
-        scale: new Vector3(0.3, 0.3, 0.3)
+        position: new Vector3(12, floorArray[i]+1.5, 0),
+        scale: new Vector3(0.1, 0.05, 0.1),
+        rotation: Quaternion.Euler(0, 90, -90)
       }))
       button.addComponent(new Material())
-      button.getComponent(Material).albedoColor = Color3.Blue()
+      button.getComponent(Material).albedoColor = Color3.Gray()
       button.addComponent(new OnClick( e => {
+        outsideButtonPressed = true
         this.sendToFloor(i)
       }))
       engine.addEntity(button)
 
+      let buttonHolder = new Entity()
+      buttonHolder.addComponent(new GLTFShape("models/callButton.glb"))
+      buttonHolder.addComponent(new Transform({
+        position: new Vector3(12, floorArray[i]+1.5, 0),
+        rotation: Quaternion.Euler(0, 90, 0),
+        scale: new Vector3(1.5, 1.5, 1.5)
+      }))
+      engine.addEntity(buttonHolder)
+
+      // Implements screen that displays current floor that elevator is on
       for (let j = 0; j < 3; j++){
         let floorScreen = new Entity()
         floorScreen.addComponent(new Transform({
