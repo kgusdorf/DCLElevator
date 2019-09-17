@@ -23,6 +23,9 @@ const doorSlideOrigins = [[new Vector3(-1, 2, 1.95), new Vector3(-3, 2, 1.95)], 
 const doors = [] // Holds door entities
 const elevatorContainer: Entity = new Entity()
 const ding: Entity = new Entity()
+let floorArray: number[]
+const floorScreenContainerArray = []
+const floorScreenTextArray = []
 
 // Toggles sliding doors; Passing 0 will close; Passing 1 will open
 function toggleDoors(x: number){
@@ -47,9 +50,21 @@ export class ElevatorMove {
         transform.position = Vector3.Lerp(lerp.origin, lerp.target, lerp.fraction)
         ding.getComponent(AudioSource).playOnce()
         toggleDoors(1)
+        for (let i = 0; i < floorScreenContainerArray.length; i++){
+          if (i % 3 == 0) {
+            floorScreenContainerArray[i].getComponent(GLTFShape).visible = 1
+          } else if ((i % 3 == 1) || (i % 3 == 2)) {
+            floorScreenContainerArray[i].getComponent(GLTFShape).visible = 0
+          }
+        }
       } else {
         transform.position = Vector3.Lerp(lerp.origin, lerp.target, lerp.fraction)
         lerp.fraction += dt / (elevatorSpeed * lerp.floorDistance)
+      }
+    }
+    for (let screenText of floorScreenTextArray){
+      if (floorArray.includes(Math.floor(transform.position.y))){
+        screenText.getComponent(TextShape).value = Math.floor(transform.position.y) != 0 ? floorArray.indexOf(Math.floor(transform.position.y)) : "G"
       }
     }
   }
@@ -79,11 +94,12 @@ export class DoorSystem {
 
 export class Elevator {
   pos: Vector3
-  floorArray: number[]
+  rot: Quaternion = Quaternion.Euler(0, 0, 0)
 
-  constructor(pos: Vector3, floorArray: number[]){
+  constructor(pos: Vector3, fArray: number[], rot?: Quaternion){
     this.pos = pos
-    this.floorArray = floorArray // Floor heights [Ground, 1st Floor, 2nd, 3rd, ...]
+    this.rot = rot
+    floorArray = fArray // Floor heights [Ground, 1st Floor, 2nd, 3rd, ...]
 
     engine.addSystem(new ElevatorMove())
     engine.addSystem(new DoorSystem())
@@ -94,7 +110,16 @@ export class Elevator {
   // Sends elevator to floor passed as argument
   sendToFloor(x: number){
     let data = elevatorContainer.getComponent(ElevatorData)
-    if (data.fraction == 1 && (x >= 0 && x < this.floorArray.length) && !data.inMovement && x != data.currFloor){
+    if (data.fraction == 1 && (x >= 0 && x < floorArray.length) && !data.inMovement && x != data.currFloor){
+      for (let i = 0; i < floorScreenContainerArray.length; i++){
+        if ((i % 3 == 1) && ((x - data.currFloor) > 0)){
+          floorScreenContainerArray[i].getComponent(GLTFShape).visible = 1
+        } else if ((i % 3 == 2) && ((x - data.currFloor) < 0)) {
+          floorScreenContainerArray[i].getComponent(GLTFShape).visible = 1
+        } else {
+          floorScreenContainerArray[i].getComponent(GLTFShape).visible = 0
+        }
+      }
       data.inMovement = true
       toggleDoors(0)
       let pos = elevatorContainer.getComponent(ElevatorData).target
@@ -102,14 +127,15 @@ export class Elevator {
       data.currFloor = x
       data.fraction = 0
       data.origin = data.target
-      data.target = new Vector3(pos.x, this.floorArray[data.currFloor], pos.z)
+      data.target = new Vector3(pos.x, floorArray[data.currFloor], pos.z)
     }
   }
   
   initializeEntities(){
     // Invisible entity that is parent of moving elevator pieces
     elevatorContainer.addComponent(new Transform({
-      position: this.pos
+      position: this.pos,
+      rotation: this.rot
     }))
     elevatorContainer.addComponent(new ElevatorData())
     elevatorContainer.getComponent(ElevatorData).origin = this.pos
@@ -132,7 +158,7 @@ export class Elevator {
     engine.addEntity(elevatorRoom)
 
     // Buttons inside elevator to select floor
-    for (let i = 0; i < this.floorArray.length; i++){
+    for (let i = 0; i < floorArray.length; i++){
       const floorButton = new Entity()
       floorButton.setParent(elevatorContainer)
       floorButton.addComponent(new BoxShape())
@@ -175,11 +201,11 @@ export class Elevator {
     }
 
     // Floor entities for each level
-    for (let i = 0; i < this.floorArray.length; i++){
+    for (let i = 0; i < floorArray.length; i++){
       let floor = new Entity()
       floor.addComponent(new BoxShape())
       floor.addComponent(new Transform({
-        position: new Vector3(8, this.floorArray[i], 8),
+        position: new Vector3(8, floorArray[i], 8),
         scale: new Vector3(16, 0.05, 16)
       }))
       floor.addComponent(new Material())
@@ -187,11 +213,11 @@ export class Elevator {
       engine.addEntity(floor)
     }
 
-    for (let i = 0; i < this.floorArray.length; i++){
+    for (let i = 0; i < floorArray.length; i++){
       let button = new Entity()
       button.addComponent(new BoxShape())
       button.addComponent(new Transform({
-        position: new Vector3(12, this.floorArray[i]+2, 0),
+        position: new Vector3(12, floorArray[i]+2, 0),
         scale: new Vector3(0.3, 0.3, 0.3)
       }))
       button.addComponent(new Material())
@@ -200,6 +226,67 @@ export class Elevator {
         this.sendToFloor(i)
       }))
       engine.addEntity(button)
+
+      for (let j = 0; j < 3; j++){
+        let floorScreen = new Entity()
+        floorScreen.addComponent(new Transform({
+          position: new Vector3(12, floorArray[i]+3, 0),
+          rotation: Quaternion.Euler(0, 90, 0)
+        }))
+        if (j == 0){
+          floorScreen.addComponent(new GLTFShape("models/defaultScreen.glb"))
+        } else if (j == 1){
+          floorScreen.addComponent(new GLTFShape("models/upScreen.glb"))
+          floorScreen.getComponent(GLTFShape).visible = false
+        } else {
+          floorScreen.addComponent(new GLTFShape("models/downScreen.glb"))
+          floorScreen.getComponent(GLTFShape).visible = false
+        }
+        floorScreenContainerArray.push(floorScreen)
+        engine.addEntity(floorScreen)
+
+        let screenText = new Entity()
+        screenText.addComponent(new Transform({
+          position: new Vector3(12, floorArray[i]+3, 0.04),
+          rotation: Quaternion.Euler(0, 180, 0)
+        }))
+        const floorScreenText = new TextShape("G")
+        floorScreenText.fontSize = 2
+        screenText.addComponent(floorScreenText)
+        floorScreenTextArray.push(screenText)
+        engine.addEntity(screenText)
+      }
     }
+
+    for (let i = 0; i < 3; i++){
+      let floorScreen = new Entity()
+      floorScreen.setParent(elevatorContainer)
+      floorScreen.addComponent(new Transform({
+        position: new Vector3(1.9, 3.5, 0)
+      }))
+      if (i == 0){
+        floorScreen.addComponent(new GLTFShape("models/defaultScreen.glb"))
+      } else if (i == 1){
+        floorScreen.addComponent(new GLTFShape("models/upScreen.glb"))
+        floorScreen.getComponent(GLTFShape).visible = false
+      } else {
+        floorScreen.addComponent(new GLTFShape("models/downScreen.glb"))
+        floorScreen.getComponent(GLTFShape).visible = false
+      }
+      floorScreenContainerArray.push(floorScreen)
+      engine.addEntity(floorScreen)
+    }
+
+    let screenText = new Entity()
+    screenText.setParent(elevatorContainer)
+    screenText.addComponent(new Transform({
+      position: new Vector3(1.86, 3.5, 0),
+      rotation: Quaternion.Euler(0, 90, 0)
+    }))
+    const floorScreenText = new TextShape("G")
+    floorScreenText.fontSize = 2
+    screenText.addComponent(floorScreenText)
+    floorScreenTextArray.push(screenText)
+    engine.addEntity(screenText)
   }
 }
