@@ -18,6 +18,10 @@ export class DoorData {
   isDoorOpen: boolean = false
 }
 
+// Flag for buttons in elevator
+@Component("ElevatorButton")
+export class ElevatorButton {}
+
 const elevatorSpeed = 2 // Lower is faster; adjust this depending on distance between floors; if you go too fast the player will clip through the room and fall out
 const doorSlideOrigins = [[new Vector3(-1, 2, 1.95), new Vector3(-3, 2, 1.95)], [new Vector3(1, 2, 1.95), new Vector3(3, 2, 1.95)]] // Slide points for doors
 const doors = [] // Holds door entities
@@ -50,6 +54,9 @@ export class ElevatorMove {
         transform.position = Vector3.Lerp(lerp.origin, lerp.target, lerp.fraction)
         ding.getComponent(AudioSource).playOnce()
         toggleDoors(1)
+        for (let entity of engine.getComponentGroup(ElevatorButton).entities){
+          entity.getComponent(Material).albedoColor = Color3.Gray()
+        }
         for (let i = 0; i < floorScreenContainerArray.length; i++){
           if (i % 3 == 0) {
             floorScreenContainerArray[i].getComponent(GLTFShape).visible = 1
@@ -62,9 +69,10 @@ export class ElevatorMove {
         lerp.fraction += dt / (elevatorSpeed * lerp.floorDistance)
       }
     }
-    for (let screenText of floorScreenTextArray){
-      if (floorArray.includes(Math.floor(transform.position.y))){
-        screenText.getComponent(TextShape).value = Math.floor(transform.position.y) != 0 ? floorArray.indexOf(Math.floor(transform.position.y)) : "G"
+    let yPos = Math.floor(transform.position.y)
+    if (floorArray.includes(yPos)){
+      for (let screenText of floorScreenTextArray){
+        screenText.getComponent(TextShape).value = yPos != 0 ? floorArray.indexOf(yPos) : "G"
       }
     }
   }
@@ -101,8 +109,8 @@ export class Elevator {
     this.rot = rot
     floorArray = fArray // Floor heights [Ground, 1st Floor, 2nd, 3rd, ...]
 
-    engine.addSystem(new ElevatorMove())
-    engine.addSystem(new DoorSystem())
+    engine.addSystem(new ElevatorMove(), 1)
+    engine.addSystem(new DoorSystem(), 2)
     this.initializeEntities()
     toggleDoors(1) // Doors are opened when scene is loaded
   }
@@ -121,6 +129,7 @@ export class Elevator {
         }
       }
       data.inMovement = true
+      engine.getComponentGroup(ElevatorButton).entities[x].getComponent(Material).albedoColor = Color3.Green()
       toggleDoors(0)
       let pos = elevatorContainer.getComponent(ElevatorData).target
       data.floorDistance = Math.abs(x - data.currFloor)
@@ -161,28 +170,31 @@ export class Elevator {
     for (let i = 0; i < floorArray.length; i++){
       const floorButton = new Entity()
       floorButton.setParent(elevatorContainer)
-      floorButton.addComponent(new BoxShape())
+      floorButton.addComponent(new ElevatorButton())
+      floorButton.addComponent(new CylinderShape())
       floorButton.addComponent(new Transform({
         position: new Vector3(1.9, 1.38+0.3*i, 1.35),
-        scale: new Vector3(0.05, 0.2, 0.2)
+        scale: new Vector3(0.1, 0.05, 0.1),
+        rotation: Quaternion.Euler(0, 0, -90)
       }))
       floorButton.addComponent(new Material())
-      floorButton.getComponent(Material).albedoColor = Color3.Red()
+      floorButton.getComponent(Material).albedoColor = Color3.Gray()
       floorButton.addComponent(new OnClick( e => {
         this.sendToFloor(i)
       }))
       engine.addEntity(floorButton)
 
-      const text = new Entity()
-      text.setParent(elevatorContainer)
-      text.addComponent(new Transform({
-        position: new Vector3(1.87, 1.38+0.3*i, 1.35),
+      const buttonText = new Entity()
+      buttonText.setParent(elevatorContainer)
+      buttonText.addComponent(new Transform({
+        position: new Vector3(1.84, 1.38+0.3*i, 1.35),
         rotation: Quaternion.Euler(0, 90, 0)
       }))
       const text1 = i > 0 ? new TextShape(String(i)) : new TextShape("G")
       text1.fontSize = 1.5
-      text.addComponent(text1)
-      engine.addEntity(text)
+      text1.color = Color3.White()
+      buttonText.addComponent(text1)
+      engine.addEntity(buttonText)
     }
 
     // Sliding doors
@@ -262,7 +274,8 @@ export class Elevator {
       let floorScreen = new Entity()
       floorScreen.setParent(elevatorContainer)
       floorScreen.addComponent(new Transform({
-        position: new Vector3(1.9, 3.5, 0)
+        position: new Vector3(1.9, 2.7, 1.35),
+        scale: new Vector3(0.7, 0.7, 0.7)
       }))
       if (i == 0){
         floorScreen.addComponent(new GLTFShape("models/defaultScreen.glb"))
@@ -280,11 +293,11 @@ export class Elevator {
     let screenText = new Entity()
     screenText.setParent(elevatorContainer)
     screenText.addComponent(new Transform({
-      position: new Vector3(1.86, 3.5, 0),
+      position: new Vector3(1.86, 2.7, 1.35),
       rotation: Quaternion.Euler(0, 90, 0)
     }))
     const floorScreenText = new TextShape("G")
-    floorScreenText.fontSize = 2
+    floorScreenText.fontSize = 1
     screenText.addComponent(floorScreenText)
     floorScreenTextArray.push(screenText)
     engine.addEntity(screenText)
