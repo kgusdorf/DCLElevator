@@ -223,6 +223,7 @@ export class Elevator {
       doors[i] = new Entity()
       doors[i].setParent(elevatorContainer)
       doors[i].addComponent(new BoxShape())
+      doors[i].getComponent(BoxShape).withCollisions = true
       doors[i].addComponent(new DoorData())
       doors[i].addComponent(new Transform({
         position: doorSlideOrigins[i][0],
@@ -237,6 +238,7 @@ export class Elevator {
     for (let i = 0; i < floorArray.length; i++){
       let floor = new Entity()
       floor.addComponent(new BoxShape())
+      floor.getComponent(BoxShape).withCollisions = true
       floor.addComponent(new Transform({
         position: new Vector3(8, floorArray[i], 8),
         scale: new Vector3(16, 0.05, 16)
